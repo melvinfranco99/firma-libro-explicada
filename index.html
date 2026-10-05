@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cómo se firma un libro</title>
+<meta name="description" content="Explicación paso a paso, con ejemplos interactivos, de cómo se demuestra la autoría de «Por qué Dios es libertario» de Melvin Franco: hash SHA-256, firma Ed25519, árbol de Merkle y sello en Bitcoin con OpenTimestamps.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f5f0; --bg2:#efebe3; --card:#ffffff; --ink:#1c1b19; --ink2:#55524b; --line:#ddd7cb;
+  --accent:#b8860b; --accent-soft:#f6ecd2; --blue:#2463b5; --blue-soft:#e3edf9;
+  --green:#1f8a4c; --green-soft:#e1f3e8; --red:#c0392b; --red-soft:#fae3e0;
+  --purple:#7a4bb5; --purple-soft:#efe6f9; --orange:#d2691e; --orange-soft:#fbeadc;
+  --code:#f1eee7; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121212; --bg2:#1a1a1a; --card:#1e1e1e; --ink:#ece9e2; --ink2:#a9a49a; --line:#33312d;
+    --accent:#e0b44a; --accent-soft:#3a3020; --blue:#6ea8f0; --blue-soft:#1c2a3d;
+    --green:#4cc27f; --green-soft:#1a3326; --red:#f07060; --red-soft:#3d1f1b;
+    --purple:#b48ef0; --purple-soft:#2c2240; --orange:#f0a060; --orange-soft:#3d2a1b;
+    --code:#262522; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121212; --bg2:#1a1a1a; --card:#1e1e1e; --ink:#ece9e2; --ink2:#a9a49a; --line:#33312d;
+  --accent:#e0b44a; --accent-soft:#3a3020; --blue:#6ea8f0; --blue-soft:#1c2a3d;
+  --green:#4cc27f; --green-soft:#1a3326; --red:#f07060; --red-soft:#3d1f1b;
+  --purple:#b48ef0; --purple-soft:#2c2240; --orange:#f0a060; --orange-soft:#3d2a1b;
+  --code:#262522; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:64px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:920px;margin:0 auto;padding:0 16px}
+h1,h2,h3,h4{line-height:1.2;margin:1.6em 0 .5em}
+h1{font-size:clamp(2rem,6vw,3.2rem);font-weight:800;letter-spacing:-.02em;margin:.3em 0}
+h2{font-size:clamp(1.5rem,4vw,2rem);font-weight:800;letter-spacing:-.01em}
+h3{font-size:1.2rem;font-weight:700}
+p{margin:.6em 0}
+a{color:var(--blue)}
+code,.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.88em}
+code{background:var(--code);padding:.1em .35em;border-radius:4px;word-break:break-all}
+pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:.85rem;line-height:1.55}
+pre code{background:none;padding:0;word-break:normal}
+pre .c{color:var(--ink2)}
+small,.muted{color:var(--ink2)}
+.hash{font-family:"JetBrains Mono",monospace;font-size:.82rem;word-break:break-all;line-height:1.5}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:12px;height:52px}
+.topbar nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1}
+.topbar nav::-webkit-scrollbar{display:none}
+.topbar nav a{white-space:nowrap;text-decoration:none;color:var(--ink2);font-size:.85rem;font-weight:500;padding:6px 10px;border-radius:6px}
+.topbar nav a:hover{background:var(--bg2);color:var(--ink)}
+.theme-btn{display:flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;width:36px;height:32px;cursor:pointer;flex:none}
+
+/* hero */
+.hero{padding:56px 0 24px}
+.kicker{font-size:.8rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.lead{font-size:1.15rem;color:var(--ink2);max-width:680px}
+.pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:28px 0}
+.pillar{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.pillar .ico{font-size:1.6rem}
+.pillar b{display:block;margin:4px 0 2px}
+.pillar span{font-size:.9rem;color:var(--ink2)}
+.pillar .q{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+
+section{padding:24px 0 16px;border-top:1px solid var(--line)}
+.level{display:inline-block;font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent);margin-top:24px}
+
+/* boxes */
+.box{border-radius:12px;padding:14px 16px;margin:16px 0;border:1px solid}
+.box.idea{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
+.box.info{background:var(--blue-soft);border-color:color-mix(in srgb,var(--blue) 35%,transparent)}
+.box.ok{background:var(--green-soft);border-color:color-mix(in srgb,var(--green) 35%,transparent)}
+.box.warn{background:var(--red-soft);border-color:color-mix(in srgb,var(--red) 35%,transparent)}
+.box>b:first-child{display:block;margin-bottom:2px}
+
+/* demo cards */
+.demo{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:20px 0;box-shadow:var(--shadow)}
+.demo h4{margin:0 0 4px;font-size:1rem;display:flex;align-items:center;gap:8px}
+.demo h4::before{content:"PRUEBA";font-size:.65rem;letter-spacing:.1em;background:var(--blue);color:#fff;padding:2px 7px;border-radius:4px}
+.demo .sub{margin:0 0 12px;color:var(--ink2);font-size:.92rem}
+label{font-size:.85rem;font-weight:600;color:var(--ink2);display:block;margin:10px 0 4px}
+input[type=text],textarea{width:100%;font:inherit;font-size:.95rem;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+textarea{min-height:70px;resize:vertical}
+input:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:1px}
+button.b{font:inherit;font-size:.9rem;font-weight:600;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg2);color:var(--ink);cursor:pointer;margin:8px 6px 0 0}
+button.b:hover{border-color:var(--ink2)}
+button.b.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+button.b:disabled{opacity:.45;cursor:not-allowed}
+.out{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:6px;min-height:42px}
+.tag{display:inline-block;font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:999px}
+.tag.ok{background:var(--green-soft);color:var(--green)}
+.tag.bad{background:var(--red-soft);color:var(--red)}
+.tag.wait{background:var(--accent-soft);color:var(--accent)}
+.diff{background:var(--red-soft);color:var(--red);border-radius:2px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:640px){.row2{grid-template-columns:1fr}}
+
+/* tables */
+.tbl{overflow-x:auto;margin:14px 0;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:.9rem;background:var(--card)}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--bg2);font-weight:700;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink2)}
+tr:last-child td{border-bottom:none}
+td.y{color:var(--green);font-weight:700}
+td.n{color:var(--red);font-weight:700}
+
+/* flow diagrams */
+.flow{display:flex;align-items:stretch;gap:0;margin:20px 0;flex-wrap:wrap;justify-content:center}
+.flow .step{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:10px 12px;text-align:center;min-width:110px;flex:1;max-width:190px}
+.flow .step .ico{font-size:1.5rem}
+.flow .step b{display:block;font-size:.9rem}
+.flow .step small{display:block;font-size:.78rem;line-height:1.35}
+.flow .arr{display:flex;align-items:center;padding:0 6px;color:var(--ink2);font-size:1.3rem}
+.flow .step.k1{border-color:var(--blue)} .flow .step.k2{border-color:var(--purple)} .flow .step.k3{border-color:var(--orange)} .flow .step.k4{border-color:var(--green)} .flow .step.k5{border-color:var(--accent)}
+@media (max-width:640px){.flow{flex-direction:column;align-items:center}.flow .step{max-width:none;width:100%}.flow .arr{transform:rotate(90deg);padding:2px}}
+
+/* merkle */
+#merkleSvg{width:100%;height:auto;display:block}
+#merkleSvg .node rect{stroke-width:1.5;rx:7}
+#merkleSvg text{font-family:"JetBrains Mono",monospace;font-size:11px;fill:var(--ink)}
+#merkleSvg .lbl{font-family:Inter,sans-serif;font-size:10px;fill:var(--ink2)}
+.leafinputs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.leafinputs input{font-size:.82rem;padding:6px 8px}
+@media (max-width:640px){.leafinputs{grid-template-columns:repeat(2,1fr)}}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--ink2);margin-top:8px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1.5px solid}
+
+/* replay */
+.stages{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.stages span{font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:999px;border:1.5px solid}
+.st0{color:var(--ink2);border-color:var(--ink2)} .st1{color:var(--blue);border-color:var(--blue)} .st2{color:var(--purple);border-color:var(--purple)} .st3{color:var(--orange);border-color:var(--orange)} .st4{color:var(--green);border-color:var(--green)}
+#replayLog{max-height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-family:"JetBrains Mono",monospace;font-size:.75rem}
+#replayLog div{padding:5px 10px;border-bottom:1px solid var(--line);border-left:4px solid transparent;word-break:break-all}
+#replayLog div.s0{border-left-color:var(--ink2)} #replayLog div.s1{border-left-color:var(--blue)} #replayLog div.s2{border-left-color:var(--purple)} #replayLog div.s3{border-left-color:var(--orange)} #replayLog div.s4{border-left-color:var(--green)}
+#replayLog .op{font-weight:700}
+.added{background:var(--accent-soft);color:var(--accent)}
+.progress{height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;margin:8px 0}
+.progress div{height:100%;background:var(--blue);width:0;transition:width .15s}
+
+/* timeline */
+.timeline{position:relative;margin:20px 0;padding-left:28px}
+.timeline::before{content:"";position:absolute;left:9px;top:4px;bottom:4px;width:2px;background:var(--line)}
+.tl{position:relative;margin-bottom:16px}
+.tl::before{content:"";position:absolute;left:-24px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--card);border:3px solid var(--accent)}
+.tl b{display:block}
+.tl small{display:block}
+
+/* drop */
+.drop{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;cursor:pointer;color:var(--ink2);transition:.15s}
+.drop.over,.drop:hover{border-color:var(--blue);background:var(--blue-soft);color:var(--ink)}
+
+/* tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 0}
+.tabs button{font:inherit;font-size:.9rem;font-weight:600;padding:8px 14px;border-radius:8px 8px 0 0;border:1px solid var(--line);border-bottom:none;background:var(--bg2);color:var(--ink2);cursor:pointer}
+.tabs button.on{background:var(--card);color:var(--ink)}
+.tabpane{display:none;background:var(--card);border:1px solid var(--line);border-radius:0 12px 12px 12px;padding:4px 18px 14px}
+.tabpane.on{display:block}
+ol.steps{padding-left:0;list-style:none;counter-reset:s}
+ol.steps>li{counter-increment:s;position:relative;padding-left:40px;margin:16px 0}
+ol.steps>li::before{content:counter(s);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.check li{margin:6px 0}
+footer{padding:40px 0 60px;color:var(--ink2);font-size:.88rem;border-top:1px solid var(--line);margin-top:30px}
+dl.gl dt{font-weight:700;margin-top:12px}
+dl.gl dd{margin:2px 0 0;color:var(--ink2)}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="wrap">
+  <nav>
+    <a href="#problema">El problema</a>
+    <a href="#hash">1 · Hash</a>
+    <a href="#firma">2 · Firma</a>
+    <a href="#fecha">3 · La fecha</a>
+    <a href="#merkle">4 · Merkle</a>
+    <a href="#bitcoin">5 · Bitcoin</a>
+    <a href="#secreto">6 · Secreto</a>
+    <a href="#junto">Todo junto</a>
+    <a href="#verificar">Verificar</a>
+    <a href="#glosario">Glosario</a>
+  </nav>
+  <button class="theme-btn" id="themeBtn" title="Cambiar tema" aria-label="Cambiar tema"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg></button>
+</div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="kicker">Autoría criptográfica explicada</div>
+  <h1>Cómo se firma un libro<br>sin notarios ni registros</h1>
+  <p class="lead">El libro <em>Por qué Dios es libertario</em>, de Melvin Franco, lleva una prueba de autoría que cualquiera puede comprobar con software libre. Aquí se explica cómo funciona, de lo más sencillo a lo más complejo, con ejemplos que puedes tocar.</p>
+
+  <div class="pillars">
+    <div class="pillar"><div class="ico">🔍</div><div class="q" style="color:var(--blue)">¿Es el mismo?</div><b>Huella digital (hash)</b><span>Archivo <code>.sha256</code>. Si cambia una sola coma, la huella cambia.</span></div>
+    <div class="pillar"><div class="ico">✍️</div><div class="q" style="color:var(--purple)">¿Quién lo firmó?</div><b>Firma digital</b><span>Archivo <code>.asc</code>. Sólo la clave privada del autor puede producirla.</span></div>
+    <div class="pillar"><div class="ico">⛓️</div><div class="q" style="color:var(--orange)">¿Desde cuándo?</div><b>Sello en Bitcoin</b><span>Archivo <code>.ots</code>. El libro existía antes de un bloque concreto.</span></div>
+    <div class="pillar"><div class="ico">🔐</div><div class="q" style="color:var(--green)">¿Y si roban la clave?</div><b>Compromiso secreto</b><span>Un hash impreso en el libro de un secreto que sólo el autor conoce.</span></div>
+  </div>
+  <p class="muted">Todas las pruebas de esta página se ejecutan en tu navegador. Nada se envía a ningún servidor, salvo la consulta opcional a un explorador de Bitcoin al final del nivel 5.</p>
+</div></header>
+
+<main class="wrap">
+
+<!-- ============================================================ -->
+<section id="problema">
+<h2>El problema: ¿cómo demuestras que algo es tuyo?</h2>
+<p>Un libro en PDF es un archivo, y un archivo se copia sin coste y sin dejar rastro. Cualquiera puede descargarlo, cambiar el nombre del autor y decir que lo escribió él. Tradicionalmente esto se resuelve con un tercero de confianza: un registro de la propiedad intelectual, un notario o una editorial.</p>
+<p>Aquí no hay terceros. En su lugar se combinan cuatro piezas matemáticas, y cada una responde a una pregunta distinta:</p>
+
+<div class="tbl"><table>
+<tr><th>Pregunta</th><th>Pieza</th><th>Equivalente en el mundo físico</th><th>Archivo</th></tr>
+<tr><td>¿Este archivo es exactamente el original?</td><td><b>Hash SHA-256</b></td><td>La huella dactilar de una persona</td><td><code>.sha256</code></td></tr>
+<tr><td>¿Quién dio su aprobación a este archivo?</td><td><b>Firma Ed25519 (OpenPGP)</b></td><td>Un sello de lacre que sólo tiene el autor</td><td><code>.asc</code></td></tr>
+<tr><td>¿Desde cuándo existe?</td><td><b>OpenTimestamps + Bitcoin</b></td><td>Publicar un anuncio en el periódico de hoy</td><td><code>.ots</code></td></tr>
+<tr><td>¿Y si alguien roba la clave en el futuro?</td><td><b>Compromiso (hash de un secreto)</b></td><td>Una carta cerrada guardada en una caja fuerte</td><td>impreso en la última página</td></tr>
+</table></div>
+
+<div class="box idea"><b>La idea clave</b>Ninguna pieza por separado demuestra la autoría. Juntas dicen: <em>«quien controla esta clave aprobó este archivo exacto, el archivo existía ya el 5 de octubre de 2026, y dentro lleva la huella de esa clave y un secreto que sólo él conoce»</em>. Para discutirlo, otra persona tendría que presentar una prueba más antigua, y eso es imposible de fabricar a posteriori.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="hash">
+<span class="level">Nivel 1 · Integridad</span>
+<h2>La huella digital: el hash</h2>
+<p>Una <b>función hash</b> toma cualquier cosa (una palabra, un libro de 300 páginas, una película) y devuelve un número de tamaño fijo. Ese número es como la huella dactilar del archivo: lo identifica, pero a partir de ella no puedes reconstruir el archivo.</p>
+
+<h3>Empecemos con un hash de juguete</h3>
+<p>Inventemos uno muy simple: <b>numeramos las letras (A=1, B=2, … Z=26), las sumamos y nos quedamos con las dos últimas cifras</b>. Así, <code>HOLA</code> = 8+15+12+1 = <b>36</b>.</p>
+
+<div class="demo">
+  <h4>Hash de juguete</h4>
+  <p class="sub">Escribe una palabra. Después prueba con <code>ROMA</code>, <code>AMOR</code>, <code>MORA</code> y <code>RAMO</code>.</p>
+  <input type="text" id="toyIn" value="HOLA" autocomplete="off">
+  <div class="out" id="toyOut"></div>
+</div>
+
+<p>Funciona, pero es muy malo. Tiene tres defectos graves:</p>
+<div class="tbl"><table>
+<tr><th>Defecto</th><th>Ejemplo</th><th>Por qué importa</th></tr>
+<tr><td><b>Colisiones fáciles</b></td><td><code>ROMA</code>, <code>AMOR</code> y <code>RAMO</code> dan 47</td><td>Dos libros distintos tendrían la misma huella y no sabríamos cuál es el original.</td></tr>
+<tr><td><b>Pocos valores posibles</b></td><td>Sólo hay 100 resultados (00–99)</td><td>Si pruebas 100 textos cualquiera, casi seguro que alguno coincide.</td></tr>
+<tr><td><b>Cambios pequeños, resultados parecidos</b></td><td><code>HOLA</code> = 36, <code>HOLB</code> = 37</td><td>El resultado da pistas sobre lo que ha cambiado.</td></tr>
+</table></div>
+
+<h3>Ahora el de verdad: SHA-256</h3>
+<p><b>SHA-256</b> resuelve los tres defectos. Devuelve 256 bits (64 caracteres hexadecimales), es decir, uno entre 2<sup>256</sup> ≈ 10<sup>77</sup> resultados posibles: más que átomos hay en la Tierra (~10<sup>50</sup>). Mezcla los bits de tal forma que cambiar una sola letra cambia, de media, la mitad del resultado. Es el mismo algoritmo que usa Bitcoin.</p>
+
+<div class="demo">
+  <h4>El efecto avalancha</h4>
+  <p class="sub">Los dos textos se diferencian en un solo carácter. Cambia lo que quieras y observa cuántos bits cambian.</p>
+  <div class="row2">
+    <div><label for="av1">Texto A</label><input type="text" id="av1" value="Por qué Dios es libertario"></div>
+    <div><label for="av2">Texto B</label><input type="text" id="av2" value="Por qué Dios es libertarios"></div>
+  </div>
+  <label>SHA-256 de A</label><div class="out hash" id="avh1"></div>
+  <label>SHA-256 de B <small>(en rojo, los caracteres distintos)</small></label><div class="out hash" id="avh2"></div>
+  <p id="avStat" style="margin-top:10px"></p>
+</div>
+
+<h3>Las propiedades que importan</h3>
+<div class="tbl"><table>
+<tr><th>Propiedad</th><th>Qué significa</th><th>Para qué sirve aquí</th></tr>
+<tr><td><b>Determinista</b></td><td>El mismo archivo da siempre el mismo hash, en cualquier ordenador.</td><td>Tú y yo podemos calcularlo por separado y comparar.</td></tr>
+<tr><td><b>Unidireccional</b></td><td>No se puede volver del hash al archivo.</td><td>Permite publicar el hash de un secreto sin revelarlo (nivel 6).</td></tr>
+<tr><td><b>Resistente a colisiones</b></td><td>Nadie ha encontrado nunca dos archivos con el mismo SHA-256.</td><td>El hash identifica al libro de forma única.</td></tr>
+<tr><td><b>Efecto avalancha</b></td><td>Un cambio mínimo produce un hash completamente distinto.</td><td>Cualquier modificación, aunque sea una coma, se detecta.</td></tr>
+<tr><td><b>Tamaño fijo</b></td><td>Un libro de 5 MB y una letra dan 64 caracteres.</td><td>Firmar y sellar un hash pequeño equivale a firmar y sellar el libro entero.</td></tr>
+</table></div>
+
+<h3>Los hashes del libro</h3>
+<p>Estos son los SHA-256 oficiales de cada edición de la versión 1.0. Si tu archivo da exactamente este valor, es idéntico bit a bit al que publicó el autor.</p>
+<div class="tbl"><table>
+<tr><th>Edición</th><th>SHA-256</th></tr>
+<tr><td>PDF de lectura</td><td class="hash">cd4b7c52adb46c8388ce699255777906f195d59c12ee98a90ba42931556bc65b</td></tr>
+<tr><td>EPUB</td><td class="hash">85e41f21ff23e96fba0d14f7774d138f4cc1734ce522d1c7b8e1b463406e2cf0</td></tr>
+<tr><td>Interior para imprimir</td><td class="hash">0e24ea0136df5ea231d483f3f2d89ef48917bd6e6fdeb5108ad0b70a5887191d</td></tr>
+<tr><td>Cubierta para imprimir</td><td class="hash">ad7d7244e32170eb0336ad4a830b22870f82098efc46d18b201eb23afd31c64d</td></tr>
+<tr><td>Portada del libro electrónico</td><td class="hash">529c60b12bbadcb750e20aeb026153dde197fcc2ca3acf3d12db172fa7bbeb28</td></tr>
+</table></div>
+
+<div class="demo" id="dropDemo">
+  <h4>Comprueba tu copia del libro</h4>
+  <p class="sub">Arrastra aquí tu PDF, EPUB o JPG. El hash se calcula en tu ordenador; el archivo no sale de él.</p>
+  <div class="drop" id="drop">📄 Arrastra un archivo aquí o pulsa para elegirlo<input type="file" id="fileIn" hidden></div>
+  <div class="out" id="dropOut" style="display:none"></div>
+</div>
+
+<div class="box warn"><b>Lo que el hash NO demuestra</b>Que el archivo sea de Melvin. Un impostor podría cambiar el PDF, calcular el nuevo hash y publicarlo en su web. El hash sólo dice <em>«este archivo es igual a aquel otro»</em>. Para saber <em>quién</em> respalda ese hash hace falta el nivel 2.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="firma">
+<span class="level">Nivel 2 · Identidad</span>
+<h2>La firma digital: una llave que sólo tiene el autor</h2>
+<p>La firma digital usa <b>criptografía asimétrica</b>: cada persona tiene dos claves matemáticamente ligadas.</p>
+
+<div class="tbl"><table>
+<tr><th></th><th>🔑 Clave privada</th><th>🔓 Clave pública</th></tr>
+<tr><td><b>Quién la tiene</b></td><td>Sólo el autor. Nunca sale de su ordenador.</td><td>Todo el mundo. Está publicada en <code>clave_publica_melvin.asc</code>.</td></tr>
+<tr><td><b>Para qué sirve</b></td><td>Para <b>firmar</b>.</td><td>Para <b>comprobar</b> firmas.</td></tr>
+<tr><td><b>Analogía</b></td><td>El sello de lacre del rey.</td><td>El dibujo del sello, que todos conocen y pueden comparar.</td></tr>
+<tr><td><b>Si la pierdes</b></td><td>No puedes firmar más. Si te la roban, pueden firmar por ti.</td><td>No pasa nada: es pública.</td></tr>
+</table></div>
+
+<div class="flow">
+  <div class="step k1"><div class="ico">📕</div><b>Libro</b><small>el archivo PDF</small></div>
+  <div class="arr">→</div>
+  <div class="step k1"><div class="ico">🔍</div><b>SHA-256</b><small>cd4b7c52…6bc65b</small></div>
+  <div class="arr">→</div>
+  <div class="step k2"><div class="ico">🔑</div><b>Firmar</b><small>con la clave privada</small></div>
+  <div class="arr">→</div>
+  <div class="step k2"><div class="ico">✍️</div><b>Firma</b><small>archivo .asc (64 bytes)</small></div>
+</div>
+<div class="flow">
+  <div class="step k2"><div class="ico">✍️</div><b>Firma + libro</b><small>lo que descargas</small></div>
+  <div class="arr">→</div>
+  <div class="step k2"><div class="ico">🔓</div><b>Verificar</b><small>con la clave pública</small></div>
+  <div class="arr">→</div>
+  <div class="step k4"><div class="ico">✅</div><b>Sí o no</b><small>¿la hizo esa clave sobre este archivo exacto?</small></div>
+</div>
+
+<h3>Ejemplo sencillo: RSA con números pequeños</h3>
+<p>RSA es el sistema de firma más conocido, y con números pequeños se puede seguir a mano. Elegimos dos primos, <b>p = 61</b> y <b>q = 53</b>:</p>
+<div class="tbl"><table>
+<tr><th>Paso</th><th>Cálculo</th><th>Resultado</th></tr>
+<tr><td>Módulo</td><td>n = p × q = 61 × 53</td><td><b>3233</b></td></tr>
+<tr><td>Auxiliar</td><td>φ = (p−1)(q−1) = 60 × 52</td><td>3120</td></tr>
+<tr><td>Exponente público</td><td>un número sin divisores comunes con 3120</td><td><b>e = 17</b></td></tr>
+<tr><td>Exponente privado</td><td>el número d tal que 17 × d deja resto 1 al dividir entre 3120</td><td><b>d = 2753</b></td></tr>
+<tr><td colspan="3">🔓 Clave pública: <b>(n = 3233, e = 17)</b> · 🔑 Clave privada: <b>d = 2753</b> (y los primos 61 y 53, que se guardan en secreto)</td></tr>
+</table></div>
+<p><b>Firmar:</b> firma = hash<sup>d</sup> mod n. &nbsp; <b>Verificar:</b> se calcula firma<sup>e</sup> mod n y tiene que dar el hash otra vez. Sólo quien conoce <i>d</i> puede producir una firma que pase la verificación. Quien sólo sabe <i>n</i> y <i>e</i> tendría que descomponer 3233 en 61 × 53, algo trivial aquí, pero imposible cuando los primos tienen más de 300 cifras.</p>
+
+<div class="demo">
+  <h4>Firma RSA de juguete</h4>
+  <p class="sub">1) Firma el mensaje. 2) Cambia una letra y vuelve a verificar. 3) Intenta falsificar una firma sin conocer d.</p>
+  <label for="rsaMsg">Mensaje</label>
+  <input type="text" id="rsaMsg" value="Este libro lo escribí yo" autocomplete="off">
+  <div class="out" id="rsaHash"></div>
+  <button class="b primary" id="rsaSign">1 · Firmar con d = 2753</button>
+  <button class="b" id="rsaVerify">2 · Verificar con e = 17</button>
+  <button class="b" id="rsaForge">3 · Intentar falsificar</button>
+  <label for="rsaSig">Firma</label>
+  <input type="text" id="rsaSig" placeholder="pulsa «Firmar»" autocomplete="off">
+  <div class="out" id="rsaOut"></div>
+</div>
+
+<h3>Lo que usa el libro: Ed25519</h3>
+<p>El libro no usa RSA sino <b>Ed25519</b>, un sistema moderno de curvas elípticas. La idea es la misma (privada firma, pública verifica), pero las matemáticas son otras: en lugar de multiplicar primos, se suman puntos de una curva, y deshacer esa suma es el problema difícil. Sus ventajas: claves de sólo 32 bytes, firmas de 64 bytes, muy rápido y difícil de implementar mal.</p>
+
+<div class="tbl"><table>
+<tr><th></th><th>RSA de juguete</th><th>RSA real</th><th>Ed25519 (el del libro)</th></tr>
+<tr><td>Problema difícil</td><td>factorizar 3233</td><td>factorizar un número de ~600 cifras</td><td>logaritmo discreto en una curva elíptica</td></tr>
+<tr><td>Clave pública</td><td>12 bits</td><td>3072–4096 bits</td><td><b>256 bits</b></td></tr>
+<tr><td>Tamaño de la firma</td><td>12 bits</td><td>384–512 bytes</td><td><b>64 bytes</b></td></tr>
+<tr><td>¿Seguro?</td><td class="n">No, se rompe a mano</td><td class="y">Sí</td><td class="y">Sí</td></tr>
+</table></div>
+
+<div class="demo">
+  <h4>Firma Ed25519 real</h4>
+  <p class="sub">Genera un par de claves Ed25519 en tu navegador, firma un texto y verifica. Después cambia el texto.</p>
+  <button class="b primary" id="edGen">1 · Generar claves</button>
+  <label>Clave pública (32 bytes)</label><div class="out hash" id="edPub"><span class="muted">—</span></div>
+  <label for="edMsg">Mensaje</label>
+  <input type="text" id="edMsg" value="Por qué Dios es libertario, versión 1.0" autocomplete="off">
+  <button class="b" id="edSign" disabled>2 · Firmar</button>
+  <button class="b" id="edVerify" disabled>3 · Verificar</button>
+  <label>Firma (64 bytes)</label><div class="out hash" id="edSig"><span class="muted">—</span></div>
+  <div class="out" id="edOut"></div>
+</div>
+
+<h3>La huella de la clave</h3>
+<p>Una clave pública es un bloque de texto largo. Para reconocerla de un vistazo se usa su <b>huella</b> (<em>fingerprint</em>): un hash de la clave. La de Melvin Franco es:</p>
+<p style="text-align:center;font-size:1.15rem" class="mono"><b>440E 03B5 ABD0 9345 1319 &nbsp;9D1A B247 0D65 B902 C107</b></p>
+<p>Esta huella está impresa en la última página del libro y publicada en el repositorio de GitHub. Al verificar una firma, <code>gpg</code> muestra la huella de la clave que firmó: si coincide con esta, la firma es del autor.</p>
+
+<h3>Qué hay dentro del archivo <code>.asc</code></h3>
+<pre><code>-----BEGIN PGP SIGNATURE-----
+
+iHUEABYKAB0WIQREDgO1q9CTRRMZnRqyRw1luQLBBwUCasNu1QAKCRCyRw1luQLB
+BzoDAQDzF2c7hMnGd6kHBwXaNz1vAvN2kCSJIt0UPp/cfFBBpQEAp0o0AP2YqBSq
+Ntez0DSAINZ1W0rvWj4gAgqATMD5GwY=
+=3vtR
+-----END PGP SIGNATURE-----</code></pre>
+<p>Es la firma del PDF de lectura, en Base64. Dentro van: el algoritmo (EdDSA), el hash usado (SHA-512 en este caso; gpg calcula su propio hash del archivo para firmar), la huella de la clave firmante, la fecha según el reloj del autor (5 oct 2026, 11:33:09 CEST) y los 64 bytes de la firma. Se llama firma <b>separada</b> (<em>detached</em>) porque va en un archivo aparte: un PDF no puede llevar dentro su propia firma, porque añadirla cambiaría el PDF y, con él, su hash.</p>
+
+<div class="box warn"><b>Lo que la firma NO demuestra</b>La fecha. La fecha del <code>.asc</code> la pone el reloj del ordenador del autor, y cualquiera puede adelantar o atrasar su reloj. Un plagiario podría firmar el libro con <em>su</em> clave y poner una fecha de 2020. Hace falta una prueba de tiempo que nadie controle: nivel 3.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="fecha">
+<span class="level">Nivel 3 · Tiempo</span>
+<h2>El problema de la fecha</h2>
+<p>Demostrar que algo existía <em>antes</em> de una fecha es difícil. Un truco clásico: fotografiarte con el periódico de hoy. La foto no puede ser anterior al periódico. Con documentos se hacía algo parecido: publicar en el periódico un resumen del documento, o enviarte una carta certificada a ti mismo y no abrirla.</p>
+<p>La versión digital: <b>publicar el hash del libro en un sitio público, que todo el mundo copia y que nadie puede reescribir</b>. Ese sitio existe: la cadena de bloques de Bitcoin.</p>
+
+<div class="tbl"><table>
+<tr><th>Método</th><th>¿Quién controla la fecha?</th><th>¿Se puede falsificar?</th></tr>
+<tr><td>Fecha del archivo o de la firma</td><td>El reloj del autor</td><td class="n">Sí, trivialmente</td></tr>
+<tr><td>Notario o registro</td><td>Una institución</td><td>Hay que confiar en ella y en que exista mañana</td></tr>
+<tr><td>Anuncio en un periódico</td><td>La imprenta</td><td>Difícil, pero caro y lento</td></tr>
+<tr><td><b>Hash en Bitcoin</b></td><td><b>Nadie en concreto: miles de nodos</b></td><td class="y">Haría falta rehacer toda la cadena desde ese bloque</td></tr>
+</table></div>
+
+<p>Por qué un bloque de Bitcoin es un buen «periódico»:</p>
+<ul>
+  <li><b>Cada bloque contiene el hash del bloque anterior.</b> Cambiar un bloque antiguo cambia su hash y rompe todos los posteriores.</li>
+  <li><b>Crear un bloque cuesta una cantidad enorme de energía</b> (prueba de trabajo). Para reescribir un bloque de hace un año habría que rehacer un año entero de minería de toda la red mundial, y adelantarla.</li>
+  <li><b>Hay decenas de miles de copias</b> repartidas por el mundo. No hay un servidor que hackear.</li>
+</ul>
+
+<div class="box info"><b>El problema práctico</b>Escribir datos en Bitcoin cuesta dinero (hay que pagar una transacción) y en cada bloque sólo caben unas pocas miles de transacciones. Si cada persona que quiere sellar un documento hiciera su propia transacción, sería caro y lento. La solución es meter <em>millones</em> de hashes en <em>una sola</em> transacción, usando un árbol de Merkle.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="merkle">
+<span class="level">Nivel 4 · Agregación</span>
+<h2>El árbol de Merkle: muchos hashes en uno</h2>
+<p>Un árbol de Merkle resume una lista de datos en un único hash, la <b>raíz</b> (<em>Merkle root</em>). Se construye así:</p>
+<ol>
+  <li>Se calcula el hash de cada elemento. Esas son las <b>hojas</b>.</li>
+  <li>Se juntan de dos en dos y se hace el hash de cada pareja: <code>H(A‖B)</code>.</li>
+  <li>Se repite con los resultados hasta que queda uno solo: la raíz.</li>
+</ol>
+
+<div class="demo">
+  <h4>Árbol de Merkle de 8 documentos</h4>
+  <p class="sub">Cambia cualquier documento y mira cómo cambia todo su camino hasta la raíz. Pulsa una hoja para ver qué hace falta para demostrar que está dentro.</p>
+  <div class="leafinputs" id="leafInputs"></div>
+  <svg id="merkleSvg" viewBox="0 0 800 300" role="img" aria-label="Árbol de Merkle de ocho hojas"></svg>
+  <div class="legend">
+    <span><i style="background:var(--green-soft);border-color:var(--green)"></i>Documento que quieres probar</span>
+    <span><i style="background:var(--orange-soft);border-color:var(--orange)"></i>Hashes que te dan (la prueba)</span>
+    <span><i style="background:var(--blue-soft);border-color:var(--blue)"></i>Hashes que calculas tú</span>
+  </div>
+  <div class="out" id="merkleOut" style="margin-top:10px"></div>
+</div>
+
+<h3>La propiedad mágica: pruebas cortísimas</h3>
+<p>Para demostrar que un documento está en el árbol <b>no hace falta enseñar los demás documentos</b>. Basta con dar los hashes «hermanos» de cada nivel. Con ellos, el verificador recalcula el camino hasta la raíz y comprueba que llega a la raíz publicada. El tamaño de la prueba crece muy despacio:</p>
+<div class="tbl"><table>
+<tr><th>Hojas en el árbol</th><th>Hashes en la prueba</th><th>Ejemplo</th></tr>
+<tr><td>8</td><td>3</td><td>El árbol de arriba</td></tr>
+<tr><td>1.024</td><td>10</td><td></td></tr>
+<tr><td>4.581</td><td>13</td><td>Las transacciones del bloque 969987, donde está el sello del libro</td></tr>
+<tr><td>1.000.000</td><td>20</td><td>Un día de sellos en un calendario de OpenTimestamps</td></tr>
+<tr><td>1.000.000.000</td><td>30</td><td></td></tr>
+</table></div>
+<div class="box idea"><b>Por eso es tan útil</b>OpenTimestamps junta los hashes de miles de personas en un árbol, pone sólo la raíz en Bitcoin (una transacción, para todos) y a cada uno le devuelve su camino particular hasta la raíz. Ese camino es el archivo <code>.ots</code>. Y Bitcoin, a su vez, resume todas las transacciones de cada bloque con otro árbol de Merkle cuya raíz va en la cabecera del bloque.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="bitcoin">
+<span class="level">Nivel 5 · El sello real</span>
+<h2>OpenTimestamps y Bitcoin: el camino completo</h2>
+<p>El archivo <code>.ots</code> del libro es una receta: <em>«parte del hash del PDF, añade esto, calcula SHA-256, añade aquello, …»</em>. Si sigues la receta, llegas exactamente a la Merkle root de un bloque de Bitcoin. Como nadie puede modificar ese bloque, el PDF tenía que existir antes de que se minara.</p>
+
+<div class="flow">
+  <div class="step k1"><div class="ico">📕</div><b>Hash del PDF</b><small>cd4b7c52…</small></div>
+  <div class="arr">→</div>
+  <div class="step k2"><div class="ico">🌳</div><b>Árboles de OpenTimestamps</b><small>agregador + calendario: miles de sellos en un hash</small></div>
+  <div class="arr">→</div>
+  <div class="step k3"><div class="ico">💸</div><b>Transacción Bitcoin</b><small>lleva ese hash en un campo OP_RETURN</small></div>
+  <div class="arr">→</div>
+  <div class="step k4"><div class="ico">🌳</div><b>Árbol del bloque</b><small>4.581 transacciones en una Merkle root</small></div>
+  <div class="arr">→</div>
+  <div class="step k5"><div class="ico">⛓️</div><b>Bloque 969987</b><small>5 oct 2026, 09:14 UTC</small></div>
+</div>
+
+<div class="tbl"><table>
+<tr><th>Dato</th><th>Valor</th></tr>
+<tr><td>Archivo sellado</td><td>PDF de lectura</td></tr>
+<tr><td>Bloque de Bitcoin</td><td><a href="https://mempool.space/block/00000000000000000000a2c99c019d58542df7c2b456f2b043020f0b882f7435" target="_blank" rel="noopener">969987</a></td></tr>
+<tr><td>Fecha del bloque</td><td>5 de octubre de 2026, 09:14:09 UTC (11:14 hora peninsular española)</td></tr>
+<tr><td>Transacción</td><td class="hash"><a href="https://mempool.space/tx/494daa24a86b4bf62c5c1b43a9bfbe6de0dd372d0c11408eb9604e380232c4a9" target="_blank" rel="noopener">494daa24a86b4bf62c5c1b43a9bfbe6de0dd372d0c11408eb9604e380232c4a9</a></td></tr>
+<tr><td>Merkle root del bloque</td><td class="hash">1538e295b237d25d8b90fdc6a560560308ad43565298c5476ae40f778d742bc2</td></tr>
+<tr><td>Operaciones en el <code>.ots</code></td><td>84 (añadir, anteponer y SHA-256)</td></tr>
+</table></div>
+
+<div class="demo">
+  <h4>Reproduce el sello real paso a paso</h4>
+  <p class="sub">Estas son las 84 operaciones reales del archivo <code>.ots</code> del PDF. Ejecútalas y comprueba que llegan a la Merkle root del bloque 969987. Después cambia un solo carácter del hash inicial y vuelve a probar.</p>
+  <div class="stages">
+    <span class="st0">Sal privada (ops 1–2)</span>
+    <span class="st1">Árbol del agregador (3–16)</span>
+    <span class="st2">Árbol del calendario (17–41)</span>
+    <span class="st3">Transacción (42–45)</span>
+    <span class="st4">Árbol del bloque (46–84)</span>
+  </div>
+  <label for="replayStart">Hash inicial (SHA-256 del PDF)</label>
+  <input type="text" id="replayStart" class="mono" value="cd4b7c52adb46c8388ce699255777906f195d59c12ee98a90ba42931556bc65b" autocomplete="off" spellcheck="false">
+  <button class="b" id="rpStep">Siguiente paso</button>
+  <button class="b primary" id="rpAll">Ejecutar todo</button>
+  <button class="b" id="rpReset">Reiniciar</button>
+  <div class="progress"><div id="rpBar"></div></div>
+  <div id="replayLog"></div>
+  <div class="out" id="rpResult"></div>
+  <button class="b" id="rpLive">Consultar el bloque 969987 en vivo (mempool.space)</button>
+  <div class="out" id="rpLiveOut" style="display:none"></div>
+</div>
+
+<h3>Qué está pasando en cada tramo</h3>
+<div class="tbl"><table>
+<tr><th>Tramo</th><th>Operaciones</th><th>Explicación</th></tr>
+<tr><td><span class="tag" style="background:var(--bg2)">Sal</span></td><td>1–2</td><td>Tu ordenador añade 16 bytes aleatorios antes de enviar nada. Así el servidor de OpenTimestamps nunca ve el hash real del libro.</td></tr>
+<tr><td><span class="tag" style="background:var(--blue-soft);color:var(--blue)">Agregador</span></td><td>3–16</td><td>Un servidor junta tu hash con los de otras personas que han sellado a la vez. Cada <code>append</code>/<code>prepend</code> + <code>sha256</code> es subir un nivel del árbol: el dato añadido es el hermano.</td></tr>
+<tr><td><span class="tag" style="background:var(--purple-soft);color:var(--purple)">Calendario</span></td><td>17–41</td><td>El calendario (aquí, <code>alice.btc.calendar.opentimestamps.org</code>) agrega todos los sellos de varias horas en un árbol mayor y obtiene una raíz de 32 bytes.</td></tr>
+<tr><td><span class="tag" style="background:var(--orange-soft);color:var(--orange)">Transacción</span></td><td>42–45</td><td>Se antepone el principio de la transacción y se añade su final. El hash queda justo después de <code>6a20</code>, que en Bitcoin significa <code>OP_RETURN</code> + «32 bytes de datos». Un doble SHA-256 da el identificador de la transacción.</td></tr>
+<tr><td><span class="tag" style="background:var(--green-soft);color:var(--green)">Bloque</span></td><td>46–84</td><td>13 niveles del árbol de Merkle de Bitcoin (que usa doble SHA-256) hasta la raíz de las 4.581 transacciones del bloque.</td></tr>
+</table></div>
+
+<div class="box info"><b>¿Por qué el resultado sale «al revés»?</b>Bitcoin calcula los hashes como bytes, pero los exploradores los muestran con los bytes en orden inverso (una costumbre histórica). El cálculo termina en <code>c22b748d…95e23815</code>; leído byte a byte desde el final da <code>1538e295…8d742bc2</code>, que es lo que muestra cualquier explorador. La demo hace esa inversión por ti.</div>
+<div class="box ok"><b>Qué demuestra esto</b>Que el PDF con hash <code>cd4b7c52…</code> existía como muy tarde el 5 de octubre de 2026 a las 09:14 UTC. Para falsificarlo habría que encontrar otra cadena de operaciones que, partiendo de otro archivo, acabe en la misma raíz (romper SHA-256), o reescribir la cadena de bloques de Bitcoin desde el bloque 969987. Las demás ediciones (EPUB, impresión, portada) están selladas igual en los bloques 970012 y 970016.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="secreto">
+<span class="level">Nivel 6 · Seguro de futuro</span>
+<h2>El compromiso secreto</h2>
+<p>Queda un riesgo: ¿y si dentro de diez años alguien roba la clave privada del autor? Podría firmar cosas en su nombre, o decir que la clave siempre fue suya. Para eso existe el <b>compromiso</b> (<em>commitment</em>).</p>
+<p>Funciona como una carta cerrada: el autor generó un secreto de 32 bytes aleatorios, lo guardó, y publicó sólo su hash. Por la propiedad unidireccional del hash, nadie puede averiguar el secreto a partir de él. Pero si algún día el autor lo revela, cualquiera puede calcular el hash y comprobar que coincide.</p>
+
+<div class="flow">
+  <div class="step k5"><div class="ico">🎲</div><b>Secreto</b><small>32 bytes aleatorios, sólo los tiene el autor</small></div>
+  <div class="arr">→</div>
+  <div class="step k1"><div class="ico">🔍</div><b>SHA-256</b><small>unidireccional</small></div>
+  <div class="arr">→</div>
+  <div class="step k4"><div class="ico">📖</div><b>Compromiso</b><small>impreso en la última página del libro</small></div>
+</div>
+
+<p>El compromiso del libro, impreso en la última página:</p>
+<p class="hash" style="text-align:center;font-size:.95rem"><b>52609b6ec746cc3f379da62986618d1d881824bf81eee6e2a8015badfe4da4c7</b></p>
+
+<div class="demo">
+  <h4>Haz tu propio compromiso</h4>
+  <p class="sub">Escribe un secreto y publica sólo el compromiso. Luego intenta «revelarlo» con otro texto.</p>
+  <label for="cmSecret">1 · Tu secreto</label>
+  <input type="text" id="cmSecret" value="Mi número de la suerte es 7 y nadie lo sabe" autocomplete="off">
+  <label>Compromiso (lo que publicas)</label>
+  <div class="out hash" id="cmHash"></div>
+  <label for="cmReveal">2 · Alguien dice conocer el secreto</label>
+  <input type="text" id="cmReveal" placeholder="escribe aquí el supuesto secreto" autocomplete="off">
+  <div class="out" id="cmOut"></div>
+</div>
+
+<div class="box idea"><b>Por qué refuerza la autoría</b>El compromiso está <em>dentro</em> del PDF, y el PDF está sellado en Bitcoin. Así que queda demostrado que, el 5 de octubre de 2026, quien publicó el libro ya conocía el secreto. Un ladrón de claves no puede revelarlo; un plagiario tampoco. Sólo el autor. Es una carta que se juega una vez: al revelarla deja de ser secreta, así que se reserva para una disputa seria.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="junto">
+<h2>Todo junto</h2>
+<p>Cada pieza tapa el hueco de la anterior:</p>
+<div class="tbl"><table>
+<tr><th>Pieza</th><th>Integridad</th><th>Identidad</th><th>Fecha fiable</th><th>Resiste el robo de la clave</th></tr>
+<tr><td>🔍 Hash</td><td class="y">Sí</td><td class="n">No</td><td class="n">No</td><td class="n">No</td></tr>
+<tr><td>✍️ Firma</td><td class="y">Sí</td><td class="y">Sí</td><td class="n">No</td><td class="n">No</td></tr>
+<tr><td>⛓️ Sello en Bitcoin</td><td class="y">Sí</td><td class="n">No</td><td class="y">Sí</td><td>—</td></tr>
+<tr><td>🔐 Compromiso</td><td>—</td><td class="y">Sí (al revelarlo)</td><td class="y">Sí (va dentro del PDF sellado)</td><td class="y">Sí</td></tr>
+<tr><td><b>Las cuatro juntas</b></td><td class="y">Sí</td><td class="y">Sí</td><td class="y">Sí</td><td class="y">Sí</td></tr>
+</table></div>
+
+<h3>La cronología del 5 de octubre de 2026</h3>
+<div class="timeline">
+  <div class="tl"><b>Antes de las 11:14 (hora española)</b><small>El autor termina el PDF, calcula su SHA-256, lo envía (con sal) a los calendarios de OpenTimestamps y guarda el <code>.ots</code> provisional. Dentro del PDF ya van la huella de la clave y el compromiso.</small></div>
+  <div class="tl"><b>11:14:09 · Bloque 969987</b><small>Un minero incluye la transacción del calendario. Desde este momento la existencia del PDF queda grabada en Bitcoin.</small></div>
+  <div class="tl"><b>11:33:09 · Firma</b><small>El autor firma el PDF con su clave Ed25519 y publica el <code>.asc</code>.</small></div>
+  <div class="tl"><b>Después · <code>ots upgrade</code></b><small>Se descarga del calendario el camino completo hasta el bloque, y el <code>.ots</code> pasa de «pendiente» a «completo». Todo se publica en GitHub.</small></div>
+</div>
+
+<h3>¿Y si…?</h3>
+<div class="tbl"><table>
+<tr><th>Situación</th><th>Qué pasa</th></tr>
+<tr><td>Alguien modifica el PDF (cambia el autor, añade un capítulo)</td><td>El hash cambia. Ya no coincide con el publicado, la firma falla y el sello no llega a la raíz del bloque.</td></tr>
+<tr><td>Un plagiario firma el libro con su propia clave</td><td>Su firma es válida, pero para <em>su</em> clave, cuya huella no es la impresa en el libro. Y cualquier sello suyo será posterior al bloque 969987.</td></tr>
+<tr><td>Un plagiario cambia el nombre del autor, firma y sella su versión</td><td>Su archivo tiene otro hash y un sello más reciente. El de Melvin es anterior y está en Bitcoin: gana la prueba más antigua.</td></tr>
+<tr><td>GitHub desaparece</td><td>No importa. Los archivos <code>.asc</code> y <code>.ots</code> son autosuficientes y se pueden guardar en cualquier sitio. Bitcoin sigue ahí.</td></tr>
+<tr><td>OpenTimestamps desaparece</td><td>Tampoco importa. El <code>.ots</code> completo ya contiene todo el camino; sólo hace falta Bitcoin para verificarlo.</td></tr>
+<tr><td>Roban la clave privada dentro de unos años</td><td>Las firmas antiguas siguen siendo válidas y el sello demuestra su fecha. El autor puede revocar la clave y, si hace falta, revelar el secreto del compromiso.</td></tr>
+<tr><td>El autor pierde la clave privada</td><td>No puede firmar nada nuevo con ella, pero lo ya firmado y sellado sigue siendo válido para siempre.</td></tr>
+</table></div>
+
+<div class="box warn"><b>Límites honestos</b>Esto demuestra que el poseedor de la clave <code>440E…C107</code> tenía este libro exacto el 5 de octubre de 2026 y lo respalda. No demuestra por sí solo que esa clave pertenezca a una persona concreta: eso depende de que la huella se publique en sitios que se sabe que controla el autor (el propio libro, su GitHub, sus redes). Y no impide que alguien que tuviera el texto <em>antes</em> de esa fecha lo hubiera sellado antes; por eso conviene sellar los borradores pronto.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="verificar">
+<h2>Cómo verificarlo</h2>
+<p>Hay tres formas, de más fácil a más completa. Elige según cuánto quieras confiar en herramientas ajenas.</p>
+
+<div class="tabs" role="tablist">
+  <button class="on" data-tab="t-ext">Soy un lector externo</button>
+  <button data-tab="t-aut">Soy el autor</button>
+</div>
+
+<div class="tabpane on" id="t-ext">
+<h3>A · En el navegador, sin instalar nada</h3>
+<ol class="steps">
+  <li><b>Integridad.</b> Arrastra tu copia del libro en la <a href="#dropDemo">prueba del nivel 1</a>. Debe decir que coincide con una edición oficial.</li>
+  <li><b>Sello en Bitcoin.</b> Entra en <a href="https://opentimestamps.org" target="_blank" rel="noopener">opentimestamps.org</a>, arrastra el archivo <code>.ots</code> y después el libro. Te dirá en qué bloque está sellado. O reproduce el camino en la <a href="#bitcoin">prueba del nivel 5</a> y compáralo con el bloque en vivo.</li>
+  <li><b>Firma.</b> En el navegador no hay una herramienta OpenPGP fiable de uso general; para la firma usa la opción B.</li>
+</ol>
+
+<h3>B · En la terminal, con las herramientas oficiales</h3>
+<p><b>Instalar</b> (una vez):</p>
+<pre><code><span class="c"># Linux (Debian/Ubuntu)</span>
+sudo apt install gnupg git python3-pip
+<span class="c"># macOS</span>
+brew install gnupg git
+<span class="c"># Windows: instala Gpg4win (gpg4win.org) y Python</span>
+
+pip install opentimestamps-client</code></pre>
+
+<ol class="steps">
+<li><b>Descarga los archivos.</b>
+<pre><code>git clone https://github.com/melvinfranco99/autoria-libros.git
+cd autoria-libros/por-que-dios-es-libertario</code></pre></li>
+
+<li><b>Integridad: ¿es el archivo original?</b>
+<pre><code>sha256sum -c Por_que_Dios_es_libertario_Melvin_Franco.pdf.sha256
+<span class="c"># → Por_que_Dios_es_libertario_Melvin_Franco.pdf: La suma coincide</span>
+<span class="c"># macOS: shasum -a 256 -c …   Windows (PowerShell): Get-FileHash archivo.pdf</span></code></pre>
+Si has descargado el libro de otro sitio, compara su hash con la tabla del nivel 1.</li>
+
+<li><b>Identidad: ¿lo firmó la clave del autor?</b>
+<pre><code>gpg --import ../clave_publica_melvin.asc
+gpg --verify Por_que_Dios_es_libertario_Melvin_Franco.pdf.asc Por_que_Dios_es_libertario_Melvin_Franco.pdf
+<span class="c"># → Firma correcta de "Melvin Franco &lt;melvinfrancopedraza@gmail.com&gt;"</span>
+<span class="c"># → usando EDDSA clave 440E03B5ABD0934513199D1AB2470D65B902C107</span></code></pre>
+Lo importante es la <b>huella</b>. Compárala con la que aparece en la última página del libro y en otros sitios del autor. gpg avisará de que la clave «no está certificada con una firma de confianza»: es normal, significa que tú no la has marcado como de confianza; la comparación de la huella es justamente esa comprobación.</li>
+
+<li><b>Fecha: ¿desde cuándo existe?</b>
+<pre><code>ots info Por_que_Dios_es_libertario_Melvin_Franco.pdf.ots
+<span class="c"># muestra las 84 operaciones y termina en el bloque 969987</span>
+
+ots verify Por_que_Dios_es_libertario_Melvin_Franco.pdf.ots
+<span class="c"># necesita un nodo de Bitcoin Core propio; si no tienes, dirá</span>
+<span class="c"># "Could not connect to local Bitcoin node" → usa el paso 5</span></code></pre></li>
+
+<li><b>Todo de una vez con el script del repositorio.</b>
+<pre><code>../verificar.sh</code></pre>
+Comprueba hash y firma de cada archivo, y para el sello te dice qué bloque y qué Merkle root buscar:
+<pre><code>================ Por_que_Dios_es_libertario_Melvin_Franco.pdf
+1. Hash:  OK, el archivo es el original
+2. Firma: OK, firmado por Melvin Franco (440E03B5ABD0934513199D1AB2470D65B902C107)
+3. Sello:
+   Bloque de Bitcoin 969987. El explorador debe mostrar esta Merkle Root:
+   1538e295b237d25d8b90fdc6a560560308ad43565298c5476ae40f778d742bc2</code></pre>
+Abre el bloque en <a href="https://mempool.space/block/969987" target="_blank" rel="noopener">mempool.space</a> o <a href="https://www.blockchain.com/explorer/blocks/btc/969987" target="_blank" rel="noopener">blockchain.com</a> y comprueba que la Merkle root es esa. Mejor aún si lo miras en dos exploradores distintos, o en tu propio nodo.</li>
+</ol>
+
+<h3>Lista de comprobación del verificador</h3>
+<ul class="check">
+  <li>☐ El SHA-256 de mi archivo coincide con el publicado.</li>
+  <li>☐ <code>gpg --verify</code> dice «Firma correcta».</li>
+  <li>☐ La huella de la clave firmante es <code>440E 03B5 ABD0 9345 1319 9D1A B247 0D65 B902 C107</code>.</li>
+  <li>☐ Esa misma huella aparece en la última página del libro y en otras fuentes del autor, independientes entre sí.</li>
+  <li>☐ El <code>.ots</code> lleva al bloque 969987 y su Merkle root coincide con la que muestra un explorador independiente.</li>
+  <li>☐ El compromiso de la última página es <code>52609b6e…4da4c7</code>.</li>
+</ul>
+<div class="box ok"><b>Conclusión si todo está marcado</b>El archivo que tienes es el original, lo respalda la clave cuya huella aparece en el libro, y existía el 5 de octubre de 2026 a las 09:14 UTC.</div>
+</div>
+
+<div class="tabpane" id="t-aut">
+<h3>Comprobar que todo está bien hecho</h3>
+<ol class="steps">
+<li><b>Verifica todos los archivos.</b>
+<pre><code>cd autoria-libros/por-que-dios-es-libertario
+../verificar.sh</code></pre>
+Cada archivo debe tener «Hash OK», «Firma OK» y un bloque de Bitcoin. Si alguno dice <code>PENDIENTE</code>, ejecuta <code>ots upgrade *.ots</code> unas horas después y súbelo a GitHub. Si alguno dice «falta la firma», fírmalo con <code>../firmar_y_sellar.sh &lt;archivo&gt;</code>.</li>
+
+<li><b>Comprueba que sigues teniendo la clave privada.</b>
+<pre><code>gpg --list-secret-keys 440E03B5ABD0934513199D1AB2470D65B902C107
+<span class="c"># debe aparecer como "sec ed25519"</span></code></pre></li>
+
+<li><b>Haz copia de seguridad de la clave y crea un certificado de revocación.</b> Si pierdes la clave privada no podrás firmar nuevas ediciones con ella; si te la roban, el certificado permite anunciar que ya no es válida.
+<pre><code>gpg --export-secret-keys --armor 440E03B5ABD0934513199D1AB2470D65B902C107 &gt; clave_privada.asc
+gpg --gen-revoke 440E03B5ABD0934513199D1AB2470D65B902C107 &gt; revocacion.asc
+<span class="c"># guarda ambos fuera del ordenador (USB cifrado, papel) y NUNCA los subas a GitHub</span></code></pre></li>
+
+<li><b>Guarda el secreto del compromiso</b> en el mismo sitio seguro, y comprueba que su hash coincide con el impreso en el libro:
+<pre><code>sha256sum archivo_del_secreto
+<span class="c"># → 52609b6ec746cc3f379da62986618d1d881824bf81eee6e2a8015badfe4da4c7</span></code></pre>
+Si no coincide, el secreto guardado no es el bueno: averígualo ahora, no el día de la disputa.</li>
+
+<li><b>Haz copias de los archivos de prueba</b> (<code>.pdf</code>, <code>.asc</code>, <code>.ots</code>, clave pública) en más de un sitio. Son pequeños y autosuficientes.</li>
+</ol>
+
+<h3>Demostrar que eres tú, si alguien lo pone en duda</h3>
+<p>Que tengas la clave privada se demuestra firmando algo <b>nuevo</b> que te propongan en ese momento. Así se ve que la controlas hoy, no que copiaste una firma antigua:</p>
+<ol class="steps">
+<li><b>Te piden una frase al azar</b>, por ejemplo: <em>«Hoy 12 de marzo de 2027 confirmo que soy el autor. Palabra: ornitorrinco-4821»</em>.</li>
+<li><b>La firmas</b> y envías el resultado:
+<pre><code>echo "Hoy 12 de marzo de 2027 confirmo que soy el autor. Palabra: ornitorrinco-4821" | gpg --clearsign</code></pre></li>
+<li><b>Quien duda lo verifica</b> con <code>gpg --verify</code> y comprueba que la huella es <code>440E…C107</code>. Como la frase la eligió él, la firma no puede ser antigua.</li>
+<li><b>Si la clave estuviera comprometida</b>, último recurso: revela el secreto del compromiso. Cualquiera calcula su SHA-256, ve que coincide con el impreso en el PDF sellado en 2026, y queda claro que sólo el autor original pudo conocerlo.</li>
+</ol>
+
+<h3>Para las próximas ediciones</h3>
+<ul>
+  <li>Sella también los <b>borradores</b> (<code>ots stamp borrador.pdf</code>): cuanto antes exista una prueba, mejor.</li>
+  <li>Cada versión nueva tiene un hash nuevo: fírmala, séllala y añade una fila al README.</li>
+  <li>Usa siempre la misma clave, para que la huella publicada siga sirviendo.</li>
+</ul>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="glosario">
+<h2>Glosario</h2>
+<dl class="gl">
+  <dt>Hash (SHA-256)</dt><dd>Función que convierte cualquier dato en un número de 256 bits. El mismo dato da siempre el mismo hash, y un cambio mínimo da otro completamente distinto.</dd>
+  <dt>Clave privada / pública</dt><dd>Pareja de claves matemáticamente ligadas. La privada firma y se guarda en secreto; la pública verifica y se publica.</dd>
+  <dt>Ed25519</dt><dd>Algoritmo de firma basado en curvas elípticas. Claves de 32 bytes y firmas de 64.</dd>
+  <dt>OpenPGP / GnuPG (gpg)</dt><dd>Estándar y programa libre para firmar y cifrar. Produce los archivos <code>.asc</code>.</dd>
+  <dt>Huella (fingerprint)</dt><dd>Hash de una clave pública que sirve para identificarla. La del autor es <code>440E 03B5 … B902 C107</code>.</dd>
+  <dt>Firma separada (.asc)</dt><dd>Firma guardada en un archivo aparte del documento firmado.</dd>
+  <dt>Árbol de Merkle</dt><dd>Estructura que resume muchos hashes en uno (la raíz), y permite demostrar que un elemento está incluido con muy pocos datos.</dd>
+  <dt>Merkle root</dt><dd>El hash de la cima del árbol. Cada bloque de Bitcoin guarda en su cabecera la raíz del árbol de sus transacciones.</dd>
+  <dt>OpenTimestamps (.ots)</dt><dd>Protocolo libre y gratuito que agrega hashes de muchas personas y los ancla en Bitcoin. El <code>.ots</code> es el camino desde tu hash hasta un bloque.</dd>
+  <dt>Calendario</dt><dd>Servidor de OpenTimestamps que recoge sellos y publica periódicamente una transacción en Bitcoin.</dd>
+  <dt>OP_RETURN</dt><dd>Instrucción de Bitcoin que permite guardar unos pocos bytes de datos arbitrarios en una transacción.</dd>
+  <dt>Prueba de trabajo</dt><dd>El gasto de energía que exige crear un bloque. Es lo que hace inviable reescribir la historia de Bitcoin.</dd>
+  <dt>Compromiso (commitment)</dt><dd>Publicar el hash de un secreto: compromete a un valor sin revelarlo, y más tarde se puede demostrar revelándolo.</dd>
+</dl>
+</section>
+
+</main>
+
+<footer><div class="wrap">
+  <p>Pruebas originales: <a href="https://github.com/melvinfranco99/autoria-libros">github.com/melvinfranco99/autoria-libros</a>. Huella de la clave del autor: <code>440E 03B5 ABD0 9345 1319 9D1A B247 0D65 B902 C107</code>.</p>
+  <p>Todas las demostraciones usan la Web Crypto API de tu navegador. No se envía ningún dato salvo la consulta opcional a mempool.space.</p>
+</div></footer>
+
+<script>
+const OPS = [["append","7adf403180d8265b3d89d3392a67c6a1"],"s",["append","488a1dfcfe701e78"],"s",["prepend","d1752fc95909044ba6e6b42e2d9d4df6538b092209f547799ca65ce73aea188d"],"s",["append","ee57ee459feb73d9b5f5b6f208dfca2aa8399873261199e1c472857016a0ac37"],"s",["append","25194f9cb19df061bfc973f6b8b2f835"],"s",["append","2c5ac4113686cac906800c784185820972aa73c4dc59c938a24241246d5f6aa0"],"s",["prepend","d4a95107268d53b8907c21e9a7f5f4f4f632d35d9e8201d486bdaba70e74b20f"],"s",["append","0edcb7019c7c6c8cdad2ef54078b8780fdffb205403f4d545bc279770320a2f1"],"s",["prepend","6ac364da"],["append","de3641c63dbe81a4"],"s",["prepend","56f5ecf2d1df5fee2b92d3e1bd9b33fc5b0c32e652ed69119008e3ad6c7ac600"],"s",["append","cd04a7fe1e03d6f301bf3293759e594d69c4248914bc3e1c5964dd7e1b176888"],"s",["prepend","dc1634f427ab9e3765fee9a0aeac250cc464f60e0046d3dffd1c8a217d82088c"],"s",["append","f3c9e6dd8b9c1c8c309552d36414dbd43300db8b00cef2c2bf45901d77a1ba84"],"s",["prepend","70f947bb993b773ad73841bbff97b3d34cb7288bf759937507d16322afc47f88"],"s",["prepend","36317a81739c6d4d6b6bcec28ee9e2e266288958144ff5c0d5f8d485c02c5632"],"s",["prepend","558f90f8896bab1c1435bd4378e32f6910ddde000702ce72edae7c0cb76f57b1"],"s",["prepend","bb253290a1c9de10ffe39c7f7892acdc5774448c0bee9706a6a8e5e1b1403749"],"s",["append","879a016386936eb3dea757b779c53ad7432ce965b1f635ce4b334e5efa02faa6"],"s",["prepend","552fbd7dd32f84c0ef537c3be7c74a6e3603fc0dba57c1d4b42505488317ecfb"],"s",["append","787b38e356b376128c841e70fefeddb1f30f56f0bc6ee0f454566d1ba8fa5548"],"s",["prepend","0100000001c6344faad07dceff06f91e467d0ab3dd57f0df6d316fc8b18c618d77a8f3de3b0000000000feffffff029718000000000000160014cd9b3e71dd561f3cff16310ab37b14e1afe5d9d20000000000000000226a20"],["append","02cd0e00"],"s","s",["append","575069eca55c756a0e9346dedd696a60f5faeeef8c971a66320f6107320ea44c"],"s","s",["prepend","594e66d4fdabd77ee24a1bd21c7d89732f989c76ead3ad4915b2ab5c60fa6730"],"s","s",["prepend","af40ceb17a258a0c699998910914f02d70cb2e55db78c8b9a91536e9754fab10"],"s","s",["prepend","3ece1ce9abb36f6cd949e470b0b1ec1d45732984a538d0b9b774e3ae9287d10d"],"s","s",["append","1241c2b103335d1f72384682a734e9e93ba3e01e1167aad1dc5a50b39f3e857c"],"s","s",["prepend","5620d88bbeb242a9d7f7159b4ec7f31a8df0a9d1db227c499b7d116c5cf4028c"],"s","s",["append","5d30af9fa6b81d4db13336f81378b9d9702d4718428dfb44c78b8cd034702c16"],"s","s",["append","3e87856c9fa21493a13002b96370e5c1cc8aae24314bc76fb02a86825a3fb12e"],"s","s",["prepend","a2e423f19050bbec0df5cef3c2936601bf172f2d0c85013ff78999384b664ab9"],"s","s",["append","d1ac35cd378f384528004233f5d3d7ecee7276991bd00905f3ca383db22e2612"],"s","s",["prepend","6fb974ffc001932666a48b850d20a3219d4b35a4f23c5cc49862431fda942822"],"s","s",["append","b67d54168401636667f84fb1fd6d9562de0b52f0e4222ced2990deec8fe17a33"],"s","s",["append","c7e86e4194c9634a26c555d58c6d955b5087c51cc3b25f6f4c8ba3bfcbf889c8"],"s","s"];
+const BLOCK_ROOT = "1538e295b237d25d8b90fdc6a560560308ad43565298c5476ae40f778d742bc2";
+const BOOK = {
+  "cd4b7c52adb46c8388ce699255777906f195d59c12ee98a90ba42931556bc65b":"PDF de lectura",
+  "85e41f21ff23e96fba0d14f7774d138f4cc1734ce522d1c7b8e1b463406e2cf0":"EPUB",
+  "0e24ea0136df5ea231d483f3f2d89ef48917bd6e6fdeb5108ad0b70a5887191d":"Interior para imprimir",
+  "ad7d7244e32170eb0336ad4a830b22870f82098efc46d18b201eb23afd31c64d":"Cubierta para imprimir",
+  "529c60b12bbadcb750e20aeb026153dde197fcc2ca3acf3d12db172fa7bbeb28":"Portada del libro electrónico"
+};
+const $ = id => document.getElementById(id);
+const enc = new TextEncoder();
+const hex = b => [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+const unhex = h => new Uint8Array((h.match(/../g)||[]).map(x=>parseInt(x,16)));
+const sha = async bytes => new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+const shaHex = async s => hex(await sha(typeof s==="string"?enc.encode(s):s));
+const esc = s => s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* tema */
+(()=>{
+  const r=document.documentElement;
+  try{const t=localStorage.getItem("tema"); if(t) r.dataset.theme=t;}catch(e){}
+  $("themeBtn").onclick=()=>{
+    const dark = r.dataset.theme ? r.dataset.theme==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    r.dataset.theme = dark?"light":"dark";
+    try{localStorage.setItem("tema",r.dataset.theme);}catch(e){}
+  };
+})();
+
+/* hash de juguete */
+function toy(){
+  const s=$("toyIn").value.toUpperCase().normalize("NFD").replace(/[^A-Z]/g,"");
+  const parts=[...s].map(c=>c.charCodeAt(0)-64);
+  const sum=parts.reduce((a,b)=>a+b,0);
+  $("toyOut").innerHTML = s ? `${[...s].map((c,i)=>`${c}=${parts[i]}`).join(" + ")} = ${sum} → <b style="font-size:1.3em">${String(sum%100).padStart(2,"0")}</b>` : '<span class="muted">Escribe letras</span>';
+}
+$("toyIn").oninput=toy; toy();
+
+/* avalancha */
+async function aval(){
+  const [h1,h2]=[await shaHex($("av1").value), await shaHex($("av2").value)];
+  $("avh1").textContent=h1;
+  $("avh2").innerHTML=[...h2].map((c,i)=>c===h1[i]?c:`<span class="diff">${c}</span>`).join("");
+  const a=unhex(h1), b=unhex(h2); let bits=0;
+  for(let i=0;i<32;i++){let x=a[i]^b[i]; while(x){bits+=x&1;x>>=1;}}
+  const chars=[...h2].filter((c,i)=>c!==h1[i]).length;
+  $("avStat").innerHTML = bits===0 ? '<span class="tag ok">Textos idénticos → hashes idénticos</span>' :
+    `Cambian <b>${chars} de 64</b> caracteres y <b>${bits} de 256 bits</b> (${(bits/2.56).toFixed(0)} %). Lo esperado en una buena función hash es en torno al 50 %.`;
+}
+$("av1").oninput=aval; $("av2").oninput=aval; aval();
+
+/* comprobar archivo */
+async function checkFile(f){
+  const out=$("dropOut"); out.style.display="block";
+  out.innerHTML=`Calculando SHA-256 de <b>${esc(f.name)}</b>…`;
+  const h=hex(await sha(await f.arrayBuffer()));
+  const m=BOOK[h];
+  out.innerHTML=`<div class="hash">${h}</div><p style="margin:.5em 0 0">` + (m
+    ? `<span class="tag ok">✓ Coincide</span> Es el archivo original: <b>${m}</b>, versión 1.0.`
+    : `<span class="tag bad">✗ No coincide</span> Este archivo no es ninguna de las ediciones oficiales (o ha sido modificado).`) + `</p>`;
+}
+const drop=$("drop");
+drop.onclick=()=>$("fileIn").click();
+$("fileIn").onchange=e=>e.target.files[0]&&checkFile(e.target.files[0]);
+drop.ondragover=e=>{e.preventDefault();drop.classList.add("over")};
+drop.ondragleave=()=>drop.classList.remove("over");
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove("over");e.dataTransfer.files[0]&&checkFile(e.dataTransfer.files[0]);};
+
+/* RSA de juguete */
+const N=3233n,E=17n,D=2753n;
+const modpow=(b,e,m)=>{let r=1n;b%=m;while(e>0n){if(e&1n)r=r*b%m;b=b*b%m;e>>=1n;}return r;};
+async function rsaH(){const h=await sha(enc.encode($("rsaMsg").value));return BigInt(((h[0]<<24)|(h[1]<<16)|(h[2]<<8)|h[3])>>>0)%N;}
+async function rsaShow(){const h=await rsaH();$("rsaHash").innerHTML=`Hash reducido del mensaje (SHA-256 mod 3233): <b>${h}</b>`;}
+$("rsaMsg").oninput=rsaShow; rsaShow();
+$("rsaSign").onclick=async()=>{
+  const h=await rsaH(), s=modpow(h,D,N);
+  $("rsaSig").value=s;
+  $("rsaOut").innerHTML=`firma = ${h}<sup>2753</sup> mod 3233 = <b>${s}</b>`;
+};
+$("rsaVerify").onclick=async()=>{
+  const h=await rsaH(), s=BigInt(parseInt($("rsaSig").value)||0), v=modpow(s,E,N);
+  $("rsaOut").innerHTML=`${s}<sup>17</sup> mod 3233 = <b>${v}</b> · hash del mensaje = <b>${h}</b><br>` +
+    (v===h?'<span class="tag ok">✓ Firma válida</span> La hizo quien conoce d, sobre este mensaje exacto.'
+          :'<span class="tag bad">✗ Firma inválida</span> El mensaje ha cambiado o la firma no se hizo con la clave privada.');
+};
+$("rsaForge").onclick=async()=>{
+  const h=await rsaH(); let tries=0,hit=0;
+  for(let i=0;i<20;i++){const s=BigInt(1+Math.floor(Math.random()*3232));tries++;if(modpow(s,E,N)===h)hit++;}
+  $("rsaSig").value="";
+  $("rsaOut").innerHTML=`He probado ${tries} firmas al azar: ${hit} válidas. Con números de juguete la probabilidad de acertar es 1 entre 3233; con Ed25519 es 1 entre 2<sup>128</sup> o menos, que en la práctica es cero.`;
+};
+
+/* Ed25519 */
+let edKeys=null;
+$("edGen").onclick=async()=>{
+  try{
+    edKeys=await crypto.subtle.generateKey({name:"Ed25519"},true,["sign","verify"]);
+    $("edPub").textContent=hex(await crypto.subtle.exportKey("raw",edKeys.publicKey));
+    $("edSign").disabled=false; $("edSig").innerHTML='<span class="muted">—</span>'; $("edVerify").disabled=true;
+    $("edOut").innerHTML='Claves generadas. La privada se queda en la memoria de esta pestaña y no se muestra.';
+  }catch(e){$("edOut").innerHTML='<span class="tag bad">No disponible</span> Tu navegador no soporta Ed25519 en Web Crypto. Prueba con una versión reciente de Chrome, Firefox, Edge o Safari.';}
+};
+let edSigBytes=null;
+$("edSign").onclick=async()=>{
+  edSigBytes=await crypto.subtle.sign({name:"Ed25519"},edKeys.privateKey,enc.encode($("edMsg").value));
+  $("edSig").textContent=hex(edSigBytes); $("edVerify").disabled=false;
+  $("edOut").innerHTML='Firmado. Ahora pulsa «Verificar», o cambia el mensaje antes.';
+};
+$("edVerify").onclick=async()=>{
+  const ok=await crypto.subtle.verify({name:"Ed25519"},edKeys.publicKey,edSigBytes,enc.encode($("edMsg").value));
+  $("edOut").innerHTML=ok?'<span class="tag ok">✓ Firma válida</span> El mensaje es exactamente el firmado y lo firmó la clave privada de esta clave pública.'
+                         :'<span class="tag bad">✗ Firma inválida</span> El mensaje no es el que se firmó. Basta un carácter.';
+};
+
+/* Merkle */
+const LEAVES=["Libro A","Libro B","Libro C","Por qué Dios es libertario","Libro E","Libro F","Libro G","Libro H"];
+let sel=3;
+(()=>{const box=$("leafInputs");LEAVES.forEach((v,i)=>{const inp=document.createElement("input");inp.type="text";inp.value=v;inp.setAttribute("aria-label","Documento "+(i+1));inp.oninput=()=>{LEAVES[i]=inp.value;merkle();};box.appendChild(inp);});})();
+async function merkle(){
+  const lv=[await Promise.all(LEAVES.map(l=>sha(enc.encode(l))))];
+  while(lv[lv.length-1].length>1){
+    const p=lv[lv.length-1],n=[];
+    for(let i=0;i<p.length;i+=2){const c=new Uint8Array(64);c.set(p[i]);c.set(p[i+1],32);n.push(await sha(c));}
+    lv.push(n);
+  }
+  // nodos del camino y hermanos
+  const path=new Set(),sib=new Set();let idx=sel;
+  for(let l=0;l<lv.length;l++){path.add(l+":"+idx); if(l<lv.length-1) sib.add(l+":"+(idx^1)); idx>>=1;}
+  const W=800,H=300,bw=88,bh=30,ys=[230,160,90,20];
+  let s="";
+  const pos=(l,i)=>{const n=lv[l].length;return [W/n*(i+.5),ys[l]];};
+  for(let l=1;l<lv.length;l++)for(let i=0;i<lv[l].length;i++){const[x,y]=pos(l,i);for(const c of[2*i,2*i+1]){const[cx,cy]=pos(l-1,c);s+=`<line x1="${x}" y1="${y+bh/2}" x2="${cx}" y2="${cy-bh/2}" stroke="var(--line)" stroke-width="1.5"/>`;}}
+  for(let l=0;l<lv.length;l++)for(let i=0;i<lv[l].length;i++){
+    const[x,y]=pos(l,i),k=l+":"+i;
+    let fill="var(--card)",st="var(--line)";
+    if(l===0&&i===sel){fill="var(--green-soft)";st="var(--green)";}
+    else if(sib.has(k)){fill="var(--orange-soft)";st="var(--orange)";}
+    else if(path.has(k)){fill="var(--blue-soft)";st="var(--blue)";}
+    s+=`<g class="node" ${l===0?`data-i="${i}" style="cursor:pointer"`:""}><rect x="${x-bw/2}" y="${y-bh/2}" width="${bw}" height="${bh}" rx="7" fill="${fill}" stroke="${st}" stroke-width="1.5"/><text x="${x}" y="${y+4}" text-anchor="middle">${hex(lv[l][i]).slice(0,8)}</text></g>`;
+    if(l===0) s+=`<text class="lbl" x="${x}" y="${y+bh/2+16}" text-anchor="middle">hoja ${i+1}</text>`;
+  }
+  s+=`<text class="lbl" x="${W/2+bw/2+8}" y="${ys[3]+4}">← Merkle root</text>`;
+  const svg=$("merkleSvg");svg.innerHTML=s;
+  svg.querySelectorAll("[data-i]").forEach(g=>g.onclick=()=>{sel=+g.dataset.i;merkle();});
+  const proof=[...sib].map(k=>{const[l,i]=k.split(":").map(Number);return hex(lv[l][i]).slice(0,8)+"…";});
+  $("merkleOut").innerHTML=`Raíz: <span class="hash">${hex(lv[3][0])}</span><br>Para demostrar que <b>«${esc(LEAVES[sel])}»</b> está en el árbol basta con su texto y <b>3 hashes</b>: ${proof.map(p=>`<code>${p}</code>`).join(", ")}. Con ellos se recalculan los nodos azules y, si se llega a la raíz publicada, está dentro. Los otros 7 documentos no hace falta verlos.`;
+}
+merkle();
+
+/* Reproducción del sello */
+const stageOf=i=>i<2?0:i<16?1:i<41?2:i<45?3:4;
+const stageName=["sal","agregador","calendario","transacción","bloque"];
+let rp={i:0,msg:null};
+function rpReset(){
+  const v=$("replayStart").value.trim().toLowerCase();
+  if(!/^[0-9a-f]{64}$/.test(v)){$("rpResult").innerHTML='<span class="tag bad">El hash inicial debe tener 64 caracteres hexadecimales</span>';rp.msg=null;return false;}
+  rp={i:0,msg:unhex(v)};$("replayLog").innerHTML=`<div class="s0">inicio · <b>${v}</b></div>`;$("rpBar").style.width="0";$("rpResult").innerHTML='<span class="muted">Pulsa «Siguiente paso» o «Ejecutar todo».</span>';return true;
+}
+const short=h=>h.length>72?h.slice(0,32)+"…"+h.slice(-32)+` (${h.length/2} bytes)`:h;
+async function rpStep(){
+  if(!rp.msg&&!rpReset())return false;
+  if(rp.i>=OPS.length)return false;
+  const op=OPS[rp.i],st=stageOf(rp.i);let line;
+  if(op==="s"){rp.msg=await sha(rp.msg);line=`<span class="op">sha256</span> → ${hex(rp.msg)}`;}
+  else{const d=unhex(op[1]);const m=new Uint8Array(rp.msg.length+d.length);
+    if(op[0]==="append"){m.set(rp.msg);m.set(d,rp.msg.length);line=`<span class="op">append</span> <span class="added">${short(op[1])}</span>`;}
+    else{m.set(d);m.set(rp.msg,d.length);line=`<span class="op">prepend</span> <span class="added">${short(op[1])}</span>`;}
+    rp.msg=m;}
+  rp.i++;
+  const log=$("replayLog");const div=document.createElement("div");div.className="s"+st;div.innerHTML=`${rp.i} · ${stageName[st]} · ${line}`;log.appendChild(div);log.scrollTop=log.scrollHeight;
+  $("rpBar").style.width=(rp.i/OPS.length*100)+"%";
+  if(rp.i===OPS.length){
+    const h=hex(rp.msg),rev=hex(rp.msg.slice().reverse());
+    $("rpResult").innerHTML=`Resultado: <span class="hash">${h}</span><br>Invertido (como lo muestran los exploradores): <span class="hash"><b>${rev}</b></span><br>Merkle root del bloque 969987: <span class="hash">${BLOCK_ROOT}</span><br>`+
+      (rev===BLOCK_ROOT?'<span class="tag ok">✓ Coinciden</span> El PDF existía cuando se minó el bloque 969987.'
+                       :'<span class="tag bad">✗ No coinciden</span> Con otro hash inicial el camino no llega al bloque: el sello sólo vale para el archivo original.');
+  } else $("rpResult").innerHTML=`<span class="muted">Paso ${rp.i} de ${OPS.length}</span>`;
+  return true;
+}
+$("rpStep").onclick=rpStep;
+$("rpAll").onclick=async()=>{if(rp.i>=OPS.length||!rp.msg){if(!rpReset())return;}while(await rpStep()){}};
+$("rpReset").onclick=rpReset;
+$("replayStart").oninput=rpReset;
+rpReset();
+$("rpLive").onclick=async()=>{
+  const o=$("rpLiveOut");o.style.display="block";o.textContent="Consultando mempool.space…";
+  try{
+    const hash=await (await fetch("https://mempool.space/api/block-height/969987")).text();
+    const b=await (await fetch("https://mempool.space/api/block/"+hash)).json();
+    const d=new Date(b.timestamp*1000);
+    o.innerHTML=`Bloque <b>${b.height}</b> · ${d.toLocaleString("es-ES",{timeZone:"UTC"})} UTC · ${b.tx_count} transacciones<br>Merkle root según mempool.space: <span class="hash">${b.merkle_root}</span><br>`+
+      (b.merkle_root===BLOCK_ROOT?'<span class="tag ok">✓ Coincide con la del sello</span>':'<span class="tag bad">✗ No coincide</span>');
+  }catch(e){o.innerHTML='<span class="tag bad">Error</span> No se pudo consultar. Ábrelo a mano: <a href="https://mempool.space/block/969987" target="_blank" rel="noopener">mempool.space/block/969987</a>';}
+};
+
+/* compromiso */
+async function cm(){
+  const h=await shaHex($("cmSecret").value);$("cmHash").textContent=h;
+  const r=$("cmReveal").value;
+  if(!r){$("cmOut").innerHTML='<span class="muted">Escribe arriba un supuesto secreto. Prueba primero con uno distinto y luego con el correcto.</span>';return;}
+  const rh=await shaHex(r);
+  $("cmOut").innerHTML=`SHA-256 del supuesto secreto: <span class="hash">${rh}</span><br>`+(rh===h?'<span class="tag ok">✓ Coincide</span> Conoce el secreto original.':'<span class="tag bad">✗ No coincide</span> No es el secreto.');
+}
+$("cmSecret").oninput=cm;$("cmReveal").oninput=cm;cm();
+
+/* pestañas */
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".tabpane").forEach(p=>p.classList.toggle("on",p.id===b.dataset.tab));
+});
+</script>
+</body>
+</html>
